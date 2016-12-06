@@ -20,23 +20,27 @@ namespace Microsoft.Azure.Mobile.Crashes.iOS.Bindings
 
         public override bool SetUpCrashHandlers()
         {
-            /* Allocate space to store the Mono handlers */
-            IntPtr sigbus = Marshal.AllocHGlobal(512);
-            IntPtr sigsegv = Marshal.AllocHGlobal(512);
+            try
+            {
+            }
+            finally
+            {
+                /* Remove previously installed Mono/Xamarin signal handlers */
+                Mono.Runtime.RemoveSignalHandlers();
+                try
+                {
+                    /* Enable native SDK crash reporting library */
+                    MSWrapperExceptionManager.StartCrashReportingFromWrapperSdk();
+                }
+                finally
+                {
+                    /* Let Mono reinstall it's signal handlers with proper chaining support. */
+                    Mono.Runtime.InstallSignalHandlers();
+                    return true;
+                }
+            }
 
-            /* Store Mono's SIGSEGV and SIGBUS handlers */
-            sigaction(Signal.SIGBUS, IntPtr.Zero, sigbus);
-            sigaction(Signal.SIGSEGV, IntPtr.Zero, sigsegv);
-
-            /* Enable native SDK crash reporting library */
-            MSWrapperExceptionManager.StartCrashReportingFromWrapperSdk();
-
-            /* Restore Mono SIGSEGV and SIGBUS handlers */
-            sigaction(Signal.SIGBUS, sigbus, IntPtr.Zero);
-            sigaction(Signal.SIGSEGV, sigsegv, IntPtr.Zero);
-            Marshal.FreeHGlobal(sigbus);
-            Marshal.FreeHGlobal(sigsegv);
-            return true;
+            return false;
         }
     }
 }
